@@ -1,0 +1,109 @@
+@startuml
+' Заголовок диаграммы
+title Последовательность создания массовых уведомлений администратором
+
+' Настройки стиля с цветами
+skinparam backgroundColor #fafafa
+skinparam actor {
+    BackgroundColor #e3f2fd
+    BorderColor #1976d2
+    FontColor #0d47a1
+}
+skinparam participant {
+    BackgroundColor #fff3cd
+    BorderColor #ffc107
+    FontColor #856404
+}
+skinparam database {
+    BackgroundColor #d1ecf1
+    BorderColor #0dcaf0
+    FontColor #087990
+}
+skinparam arrow {
+    Color #6f42c1
+    FontColor #212529
+    Thickness 1.5
+}
+skinparam note {
+    BackgroundColor #f8d7da
+    BorderColor #dc3545
+    FontColor #721c24
+}
+
+' Цвета для конкретных элементов
+skinparam ParticipantBackgroundColor<<worker>> #d4edda
+skinparam ParticipantBorderColor<<worker>> #28a745
+skinparam ParticipantBackgroundColor<<api>> #fff3cd
+skinparam ParticipantBorderColor<<api>> #ffc107
+
+' Участники с русскими названиями
+actor "Администратор" as Admin #e3f2fd
+participant "Панель Администратора" as AdminUI #fff3cd
+participant "API Уведомлений" as API <<api>> #fff3cd
+database "Очередь Redis" as Queue #d1ecf1
+participant "Обработчик" as Worker <<worker>> #d4edda
+database "ClickHouse" as CH #d1ecf1
+
+' Последовательность с русскими сообщениями
+Admin -> AdminUI : Создание массового уведомления
+AdminUI -> API : POST /admin/bulk
+API -> Queue : Постановка массовых задач
+API --> AdminUI : 202 Принято
+Queue -> Worker : Получение задач из очереди
+Worker -> Worker : Отправка уведомлений
+Worker -> CH : Запись результатов
+
+' Добавляем пояснительные заметки
+note right of Admin
+  <b>Администратор</b>
+  • Создает массовые рассылки
+  • Мониторит статус отправки
+  • Управляет шаблонами
+end note
+
+note right of AdminUI
+  <b>Панель Администратора</b>
+  • Веб-интерфейс управления
+  • Формирование запросов
+  • Отображение статуса
+end note
+
+note left of API
+  <b>API Уведомлений</b>
+  • Прием массовых запросов
+  • Валидация данных
+  • Разбиение на задачи
+end note
+
+note right of Queue
+  <b>Очередь Redis</b>
+  • Хранение массовых задач
+  • Распределение по воркерам
+  • Управление приоритетами
+end note
+
+note left of Worker
+  <b>Обработчик</b>
+  • Пакетная обработка
+  • Отправка по каналам
+  • Обработка ошибок
+end note
+
+note right of CH
+  <b>ClickHouse</b>
+  • Логирование массовых отправок
+  • Аналитика по кампаниям
+  • Статистика доставки
+end note
+
+' Добавляем общее описание процесса
+note over Admin, CH
+  <b>Процесс массовой отправки уведомлений:</b>
+  1. Администратор создает рассылку через UI
+  2. Панель формирует API-запрос
+  3. API разбивает на задачи и ставит в очередь
+  4. Обработчики выполняют массовую отправку
+  5. Результаты записываются в аналитику
+end note
+
+@enduml

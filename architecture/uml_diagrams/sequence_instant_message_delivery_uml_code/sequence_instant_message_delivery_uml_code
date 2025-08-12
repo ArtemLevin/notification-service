@@ -1,0 +1,95 @@
+@startuml
+' Заголовок диаграммы
+title Последовательность отправки мгновенного уведомления
+
+' Настройки стиля с цветами
+skinparam backgroundColor #fafafa
+skinparam actor {
+    BackgroundColor #e3f2fd
+    BorderColor #1976d2
+    FontColor #0d47a1
+}
+skinparam participant {
+    BackgroundColor #fff3cd
+    BorderColor #ffc107
+    FontColor #856404
+}
+skinparam database {
+    BackgroundColor #d1ecf1
+    BorderColor #0dcaf0
+    FontColor #087990
+}
+skinparam arrow {
+    Color #28a745
+    FontColor #212529
+}
+skinparam note {
+    BackgroundColor #f8d7da
+    BorderColor #dc3545
+    FontColor #721c24
+}
+
+' Цвета для конкретных элементов
+skinparam ParticipantBackgroundColor<<worker>> #d4edda
+skinparam ParticipantBorderColor<<worker>> #28a745
+
+' Участники с русскими названиями
+actor "Пользователь" as User
+participant "Фронтенд" as FE #fff3cd
+participant "API Уведомлений" as API #fff3cd
+database "Очередь Redis" as Queue #d1ecf1
+participant "Обработчик" as Worker <<worker>> #d4edda
+database "ClickHouse" as CH #d1ecf1
+
+' Последовательность с русскими сообщениями
+User -> FE : Запрос на мгновенное уведомление
+FE -> API : POST /notifications
+API -> Queue : Постановка задачи в очередь
+API --> FE : 202 Принято
+Queue -> Worker : Получение задачи из очереди
+Worker -> Worker : Отправка уведомления
+Worker -> CH : Запись результата
+
+' Добавляем пояснительные заметки
+note right of User
+  <b>Пользователь</b>
+  • Инициирует отправку
+  • Ожидает подтверждения
+end note
+
+note right of FE
+  <b>Фронтенд</b>
+  • Веб-интерфейс
+  • Обработка запроса
+  • Отображение результата
+end note
+
+note left of API
+  <b>API Уведомлений</b>
+  • Прием запросов
+  • Валидация данных
+  • Постановка в очередь
+end note
+
+note right of Queue
+  <b>Очередь Redis</b>
+  • Хранение задач
+  • Распределение нагрузки
+  • Гарантия доставки
+end note
+
+note left of Worker
+  <b>Обработчик</b>
+  • Асинхронная обработка
+  • Отправка через каналы
+  • Обработка ошибок
+end note
+
+note right of CH
+  <b>ClickHouse</b>
+  • Логирование
+  • Аналитика
+  • История отправок
+end note
+
+@enduml

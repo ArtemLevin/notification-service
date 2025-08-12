@@ -1,0 +1,93 @@
+@startuml
+' Заголовок диаграммы
+title Последовательность обработки запланированных уведомлений
+
+' Настройки стиля с цветами
+skinparam backgroundColor #fafafa
+skinparam participant {
+    BackgroundColor #f8d7da
+    BorderColor #dc3545
+    FontColor #721c24
+}
+skinparam database {
+    BackgroundColor #d1ecf1
+    BorderColor #0dcaf0
+    FontColor #087990
+}
+skinparam arrow {
+    Color #198754
+    FontColor #212529
+    Thickness 1.5
+}
+skinparam note {
+    BackgroundColor #fff3cd
+    BorderColor #ffc107
+    FontColor #856404
+}
+
+' Цвета для конкретных элементов
+skinparam ParticipantBackgroundColor<<worker>> #d4edda
+skinparam ParticipantBorderColor<<worker>> #28a745
+
+' Участники с русскими названиями
+participant "Планировщик" as Sched #f8d7da
+database "PostgreSQL" as PG #d1ecf1
+database "Очередь Redis" as Queue #d1ecf1
+participant "Обработчик" as Worker <<worker>> #d4edda
+database "ClickHouse" as CH #d1ecf1
+
+' Последовательность с русскими сообщениями
+Sched -> PG : Чтение запланированных уведомлений
+PG --> Sched : Возврат запланированных элементов
+Sched -> Queue : Постановка в очередь для отправки
+Queue -> Worker : Получение задачи из очереди
+Worker -> Worker : Отправка уведомления
+Worker -> CH : Запись результата в лог
+
+' Добавляем пояснительные заметки
+note right of Sched
+  <b>Планировщик</b>
+  • Периодическая проверка
+  • Обработка расписания
+  • Постановка задач в очередь
+end note
+
+note left of PG
+  <b>PostgreSQL</b>
+  • Хранение шаблонов
+  • Расписание отправки
+  • Статусы уведомлений
+end note
+
+note right of Queue
+  <b>Очередь Redis</b>
+  • Буферизация задач
+  • Распределение нагрузки
+  • Гарантия обработки
+end note
+
+note left of Worker
+  <b>Обработчик</b>
+  • Асинхронная отправка
+  • Обработка ошибок
+  • Retry-логика
+end note
+
+note right of CH
+  <b>ClickHouse</b>
+  • Хранение истории
+  • Аналитические данные
+  • Метрики доставки
+end note
+
+' Добавляем общее описание процесса
+note over Sched, CH
+  <b>Процесс обработки запланированных уведомлений:</b>
+  1. Планировщик регулярно проверяет БД
+  2. Находит уведомления к отправке
+  3. Ставит их в очередь
+  4. Обработчики выполняют отправку
+  5. Результаты логируются
+end note
+
+@enduml
