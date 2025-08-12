@@ -1,0 +1,130 @@
+@startuml
+title Архитектура сервиса нотификаций
+
+' === СТИЛЬ ===
+skinparam backgroundColor #fafafa
+skinparam packageBackgroundColor #f0f0f0
+skinparam component {
+    BackgroundColor #ffffff
+    BorderColor #333333
+    FontColor #111111
+    FontSize 11
+}
+skinparam arrow {
+    Color #444444
+    FontColor #333333
+    Thickness 1
+}
+skinparam rectangle {
+    BackgroundColor<<api>> #fff3cd
+    BorderColor<<api>> #ffc107
+    BackgroundColor<<storage>> #d1ecf1
+    BorderColor<<storage>> #0dcaf0
+    BackgroundColor<<queue>> #e2e3e5
+    BorderColor<<queue>> #6c757d
+    BackgroundColor<<worker>> #d4edda
+    BorderColor<<worker>> #28a745
+    BackgroundColor<<scheduler>> #f8d7da
+    BorderColor<<scheduler>> #dc3545
+    BackgroundColor<<external>> #f8d7da
+    BorderColor<<external>> #dc3545
+    BackgroundColor<<frontend>> #e2e3e5
+    BorderColor<<frontend>> #6c757d
+}
+
+' === СТРУКТУРА ===
+
+' ВЕРХНИЙ СЛОЙ
+package "Внешние источники" {
+  [Фронтенд] as frontend <<frontend>>
+  [Микросервисы] as microservices <<frontend>>
+  [Администратор] as admin <<frontend>>
+}
+
+' ЦЕНТРАЛЬНЫЙ СЕРВИС
+package "Сервис нотификаций" {
+  [Notification API] as api <<api>>
+  [Admin Panel] as admin_panel <<api>>
+
+  [Scheduler] as scheduler <<scheduler>>
+  [Worker Pool] as workers <<worker>>
+
+  package "Хранилища данных" {
+    [PostgreSQL\n(Notification DB)] as postgres <<storage>>
+    [Redis\n(Queue & Cache)] as redis <<queue>>
+    [ClickHouse\n(History DB)] as clickhouse <<storage>>
+  }
+}
+
+' НИЖНИЙ СЛОЙ
+package "Внешние системы отправки" {
+  [Email Service] as email <<external>>
+  [Push Service] as push <<external>>
+  [SMS Gateway] as sms <<external>>
+}
+
+' === СВЯЗИ ===
+frontend --> api : HTTP API
+microservices --> api : HTTP API
+admin --> admin_panel : Web UI
+api <--> admin_panel : Взаимодействие
+
+api --> postgres : CRUD шаблонов
+api --> redis : Постановка задач
+
+scheduler --> postgres : Чтение расписаний
+scheduler --> redis : Постановка задач
+
+workers --> redis : Обработка очереди
+workers --> postgres : Обновление статусов
+workers --> clickhouse : Логирование
+
+workers --> email : SMTP/HTTP
+workers --> push : FCM/APNs
+workers --> sms : HTTP API
+
+' === ПОДПИСИ ===
+note top of frontend
+<b>Уровень 1</b>: Входящие источники
+• Фронтенд
+• Микросервисы
+• Администраторы
+end note
+
+note top of api
+<b>Уровень 2</b>: API
+• Внешние API
+• Админ-панель
+end note
+
+note top of scheduler
+<b>Уровень 3</b>: Логика
+• Планирование задач
+• Обработка уведомлений
+end note
+
+note bottom of postgres
+<b>Уровень 4</b>: Хранилища
+• Основная база
+• Очередь
+• Аналитика
+end note
+
+note bottom of email
+<b>Уровень 5</b>: Внешние системы
+• Email
+• Push
+• SMS
+end note
+
+' === ЛЕГЕНДА ===
+legend bottom
+<b>Легенда цветов:</b>
+🟨 API
+🟥 Планировщик
+🟩 Обработчики
+🟦 Хранилища
+⬜ Внешние системы
+end legend
+
+@enduml
