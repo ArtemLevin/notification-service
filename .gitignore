@@ -38,3 +38,13 @@ ENV/
 # OS
 .DS_Store
 Thumbs.dblint-report/
+
+create_labels.sh
+create_labels.py
+create_zakhar_issues.py
+create_mikhail_issues.py
+create_artem_issues.py
+create_epic_issues.py
+create_all_issues.sh
+delete_issues.py
+create_structure.sh

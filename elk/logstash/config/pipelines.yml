@@ -1,0 +1,28 @@
+input {
+  beats {
+    port => 5044
+  }
+}
+
+filter {
+  json {
+    source => "message"
+  }
+  
+  if [service] {
+    mutate {
+      add_tag => [ "%{service}" ]
+    }
+  }
+  
+  date {
+    match => [ "timestamp", "ISO8601" ]
+  }
+}
+
+output {
+  elasticsearch {
+    hosts => ["elasticsearch:9200"]
+    index => "notification-logs-%{+YYYY.MM.dd}"
+  }
+}
