@@ -1,0 +1,17 @@
+{
+  "version": "8.11.0",
+  "objects": [
+    {
+      "id": "notification-system-dashboard",
+      "type": "dashboard",
+      "attributes": {
+        "title": "Notification System Dashboard",
+        "description": "Dashboard for monitoring notification system",
+        "panelsJSON": "[]",
+        "optionsJSON": "{\"darkTheme\":false}",
+        "version": 1,
+        "timeRestore": false
+      }
+    }
+  ]
+}
