@@ -1,20 +1,9 @@
-from enum import Enum
+from shared.enums.delivery import NotificationType, DeliveryStatus
 from pydantic import BaseModel, Field
 from typing import  List, Dict, Any
 from uuid import UUID
 from datetime import datetime
 
-class NotificationType(str, Enum):
-    EMAIL = "email"
-    SMS = "sms"
-    PUSH = "push"
-    INSTANT = "instant"
-
-class DeliveryStatus(str, Enum):
-    PENDING = "pending"
-    SENT = "sent"
-    FAILED = "failed"
-    DELIVERED = "delivered"
 
 class NotificationTemplate(BaseModel):
     id: UUID

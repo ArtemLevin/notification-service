@@ -13,12 +13,13 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.9'
+        python-version: '3.11'
 
-    - name: Install pre-commit
+    - name: Install hadolint
       run: |
-        pip install pre-commit
-        pip install hadolint
+        curl -sSL https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64 \
+          -o /usr/local/bin/hadolint
+        chmod +x /usr/local/bin/hadolint
 
     - name: Run pre-commit
       run: pre-commit run --all-files

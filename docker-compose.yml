@@ -83,6 +83,33 @@ services:
     volumes:
       - ./logs/link-shortener:/app/logs
 
+
+  notification-api:
+    build:
+      context: ./services/notification-api
+      dockerfile: Dockerfile
+    container_name: notification-api
+    ports:
+      - "8002:8000"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - notification-network
+    volumes:
+      - ./logs/notification-api:/app/logs
+
+
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
     container_name: notification-elasticsearch
@@ -166,100 +193,100 @@ services:
     networks:
       - notification-network
 
-  sentry-postgres:
-    image: postgres:15-alpine
-    container_name: sentry-postgres
-    environment:
-      POSTGRES_USER: ${SENTRY_POSTGRES_USER:-sentry}
-      POSTGRES_PASSWORD: ${SENTRY_POSTGRES_PASSWORD}
-      POSTGRES_DB: ${SENTRY_POSTGRES_DB:-sentry}
-    volumes:
-      - sentry_postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${SENTRY_POSTGRES_USER:-sentry}"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    restart: unless-stopped
-    networks:
-      - notification-network
-
-  sentry-redis:
-    image: redis:7-alpine
-    container_name: sentry-redis
-    volumes:
-      - sentry_redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    restart: unless-stopped
-    networks:
-      - notification-network
-
-  sentry:
-    image: sentry:latest
-    container_name: sentry-server
-    depends_on:
-      sentry-postgres:
-        condition: service_healthy
-      sentry-redis:
-        condition: service_healthy
-    environment:
-      SENTRY_SECRET_KEY: ${SENTRY_SECRET_KEY}
-      SENTRY_POSTGRES_HOST: ${SENTRY_POSTGRES_HOST}
-      SENTRY_REDIS_HOST: ${SENTRY_REDIS_HOST}
-      SENTRY_DB_USER: ${SENTRY_POSTGRES_USER:-sentry}
-      SENTRY_DB_PASSWORD: ${SENTRY_POSTGRES_PASSWORD}
-      SENTRY_DB_NAME: ${SENTRY_POSTGRES_DB:-sentry}
-    volumes:
-      - ./sentry/config/sentry.conf.py:/etc/sentry/sentry.conf.py
-    ports:
-      - "9000:9000"
-    restart: unless-stopped
-    networks:
-      - notification-network
-
-  sentry-worker:
-    image: sentry:latest
-    container_name: sentry-worker
-    depends_on:
-      sentry:
-        condition: service_started
-    environment:
-      SENTRY_SECRET_KEY: ${SENTRY_SECRET_KEY}
-      SENTRY_POSTGRES_HOST: ${SENTRY_POSTGRES_HOST}
-      SENTRY_REDIS_HOST: ${SENTRY_REDIS_HOST}
-      SENTRY_DB_USER: ${SENTRY_POSTGRES_USER:-sentry}
-      SENTRY_DB_PASSWORD: ${SENTRY_POSTGRES_PASSWORD}
-      SENTRY_DB_NAME: ${SENTRY_POSTGRES_DB:-sentry}
-    command: sentry run worker
-    volumes:
-      - ./sentry/config/sentry.conf.py:/etc/sentry/sentry.conf.py
-    restart: unless-stopped
-    networks:
-      - notification-network
-
-  sentry-cron:
-    image: sentry:latest
-    container_name: sentry-cron
-    depends_on:
-      sentry:
-        condition: service_started
-    environment:
-      SENTRY_SECRET_KEY: ${SENTRY_SECRET_KEY}
-      SENTRY_POSTGRES_HOST: ${SENTRY_POSTGRES_HOST}
-      SENTRY_REDIS_HOST: ${SENTRY_REDIS_HOST}
-      SENTRY_DB_USER: ${SENTRY_POSTGRES_USER:-sentry}
-      SENTRY_DB_PASSWORD: ${SENTRY_POSTGRES_PASSWORD}
-      SENTRY_DB_NAME: ${SENTRY_POSTGRES_DB:-sentry}
-    command: sentry run cron
-    volumes:
-      - ./sentry/config/sentry.conf.py:/etc/sentry/sentry.conf.py
-    restart: unless-stopped
-    networks:
-      - notification-network
+#  sentry-postgres:
+#    image: postgres:15-alpine
+#    container_name: sentry-postgres
+#    environment:
+#      POSTGRES_USER: ${SENTRY_POSTGRES_USER:-sentry}
+#      POSTGRES_PASSWORD: ${SENTRY_POSTGRES_PASSWORD}
+#      POSTGRES_DB: ${SENTRY_POSTGRES_DB:-sentry}
+#    volumes:
+#      - sentry_postgres_data:/var/lib/postgresql/data
+#    healthcheck:
+#      test: ["CMD-SHELL", "pg_isready -U ${SENTRY_POSTGRES_USER:-sentry}"]
+#      interval: 30s
+#      timeout: 10s
+#      retries: 3
+#    restart: unless-stopped
+#    networks:
+#      - notification-network
+#
+#  sentry-redis:
+#    image: redis:7-alpine
+#    container_name: sentry-redis
+#    volumes:
+#      - sentry_redis_data:/data
+#    healthcheck:
+#      test: ["CMD", "redis-cli", "ping"]
+#      interval: 30s
+#      timeout: 10s
+#      retries: 3
+#    restart: unless-stopped
+#    networks:
+#      - notification-network
+#
+#  sentry:
+#    image: sentry:latest
+#    container_name: sentry-server
+#    depends_on:
+#      sentry-postgres:
+#        condition: service_healthy
+#      sentry-redis:
+#        condition: service_healthy
+#    environment:
+#      SENTRY_SECRET_KEY: ${SENTRY_SECRET_KEY}
+#      SENTRY_POSTGRES_HOST: ${SENTRY_POSTGRES_HOST}
+#      SENTRY_REDIS_HOST: ${SENTRY_REDIS_HOST}
+#      SENTRY_DB_USER: ${SENTRY_POSTGRES_USER:-sentry}
+#      SENTRY_DB_PASSWORD: ${SENTRY_POSTGRES_PASSWORD}
+#      SENTRY_DB_NAME: ${SENTRY_POSTGRES_DB:-sentry}
+#    volumes:
+#      - ./sentry/config/sentry.conf.py:/etc/sentry/sentry.conf.py
+#    ports:
+#      - "9000:9000"
+#    restart: unless-stopped
+#    networks:
+#      - notification-network
+#
+#  sentry-worker:
+#    image: sentry:latest
+#    container_name: sentry-worker
+#    depends_on:
+#      sentry:
+#        condition: service_started
+#    environment:
+#      SENTRY_SECRET_KEY: ${SENTRY_SECRET_KEY}
+#      SENTRY_POSTGRES_HOST: ${SENTRY_POSTGRES_HOST}
+#      SENTRY_REDIS_HOST: ${SENTRY_REDIS_HOST}
+#      SENTRY_DB_USER: ${SENTRY_POSTGRES_USER:-sentry}
+#      SENTRY_DB_PASSWORD: ${SENTRY_POSTGRES_PASSWORD}
+#      SENTRY_DB_NAME: ${SENTRY_POSTGRES_DB:-sentry}
+#    command: sentry run worker
+#    volumes:
+#      - ./sentry/config/sentry.conf.py:/etc/sentry/sentry.conf.py
+#    restart: unless-stopped
+#    networks:
+#      - notification-network
+#
+#  sentry-cron:
+#    image: sentry:latest
+#    container_name: sentry-cron
+#    depends_on:
+#      sentry:
+#        condition: service_started
+#    environment:
+#      SENTRY_SECRET_KEY: ${SENTRY_SECRET_KEY}
+#      SENTRY_POSTGRES_HOST: ${SENTRY_POSTGRES_HOST}
+#      SENTRY_REDIS_HOST: ${SENTRY_REDIS_HOST}
+#      SENTRY_DB_USER: ${SENTRY_POSTGRES_USER:-sentry}
+#      SENTRY_DB_PASSWORD: ${SENTRY_POSTGRES_PASSWORD}
+#      SENTRY_DB_NAME: ${SENTRY_POSTGRES_DB:-sentry}
+#    command: sentry run cron
+#    volumes:
+#      - ./sentry/config/sentry.conf.py:/etc/sentry/sentry.conf.py
+#    restart: unless-stopped
+#    networks:
+#      - notification-network
 
 volumes:
   postgres_data:

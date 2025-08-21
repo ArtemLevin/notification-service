@@ -8,5 +8,6 @@ def test_notification_template_creation(sample_template_data):
     template = NotificationTemplate(**sample_template_data)
 
     assert template.id == sample_template_data["id"]
+    assert str(template.id) == sample_template_data["id"]
     assert template.name == sample_template_data["name"]
     assert template.notification_type == NotificationType.EMAIL
