@@ -1,5 +1,6 @@
-"""Sample test to verify CI setup"""
+"""Sample test to verify CI setup."""
+
 
 def test_example():
-    """Example test"""
+    """Example test."""
     assert 1 + 1 == 2

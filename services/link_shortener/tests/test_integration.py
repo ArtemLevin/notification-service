@@ -1,13 +1,19 @@
 """Интеграционные тесты для Link Shortener сервиса"""
 
-import pytest
 import time
+
+import pytest
 
 
 class TestLinkShortenerIntegration:
     """Интеграционные тесты для Link Shortener сервиса"""
 
-    def test_full_shorten_redirect_flow(self, client, sample_url, cleanup_redis):
+    def test_full_shorten_redirect_flow(
+        self,
+        client: pytest.Fixture,
+        sample_url: pytest.Fixture,
+        cleanup_redis: pytest.Fixture,
+    ) -> None:
         """Тест полного цикла: сокращение -> редирект"""
         # 1. Сокращаем URL
         response = client.post("/shorten", json={"original_url": sample_url})
@@ -20,7 +26,12 @@ class TestLinkShortenerIntegration:
         assert response.status_code == 200
         assert response.json()["redirect"] == sample_url
 
-    def test_shorten_get_stats_flow(self, client, sample_url, cleanup_redis):
+    def test_shorten_get_stats_flow(
+        self,
+        client: pytest.Fixture,
+        sample_url: pytest.Fixture,
+        cleanup_redis: pytest.Fixture,
+    ) -> None:
         """Тест цикла: сокращение -> статистика"""
         # 1. Сокращаем URL
         response = client.post("/shorten", json={"original_url": sample_url})
@@ -36,7 +47,12 @@ class TestLinkShortenerIntegration:
         assert stats["original_url"] == sample_url
         assert stats["click_count"] == 0
 
-    def test_click_counting(self, client, sample_url, cleanup_redis):
+    def test_click_counting(
+        self,
+        client: pytest.Fixture,
+        sample_url: pytest.Fixture,
+        cleanup_redis: pytest.Fixture,
+    ) -> None:
         """Тест подсчета кликов"""
         # 1. Сокращаем URL
         response = client.post("/shorten", json={"original_url": sample_url})
@@ -45,7 +61,7 @@ class TestLinkShortenerIntegration:
         short_code = data["short_code"]
 
         # 2. Делаем несколько кликов
-        for i in range(3):
+        for _ in range(3):
             client.get(f"/{short_code}")
             time.sleep(0.1)  # Небольшая задержка
 
@@ -55,12 +71,14 @@ class TestLinkShortenerIntegration:
         stats = response.json()
         assert stats["click_count"] == 3
 
-    def test_multiple_urls_shortening(self, client, cleanup_redis):
+    def test_multiple_urls_shortening(
+        self, client: pytest.Fixture, cleanup_redis: pytest.Fixture
+    ) -> None:
         """Тест сокращения нескольких URL"""
         urls = [
             "https://example1.com",
             "https://example2.com/page",
-            "https://example3.com/test?param=value"
+            "https://example3.com/test?param=value",
         ]
 
         short_codes = []
@@ -74,25 +92,27 @@ class TestLinkShortenerIntegration:
         # Проверяем, что все коды уникальны
         assert len(set(short_codes)) == len(short_codes)
 
-    def test_custom_alias_uniqueness(self, client, cleanup_redis):
+    def test_custom_alias_uniqueness(
+        self, client: pytest.Fixture, cleanup_redis: pytest.Fixture
+    ) -> None:
         """Тест уникальности кастомных алиасов"""
         custom_alias = "unique-test"
 
         # Создаем первый URL
-        response1 = client.post("/shorten", json={
-            "original_url": "https://example1.com",
-            "custom_alias": custom_alias
-        })
+        response1 = client.post(
+            "/shorten",
+            json={"original_url": "https://example1.com", "custom_alias": custom_alias},
+        )
         assert response1.status_code == 200
 
         # Пытаемся создать второй URL с тем же алиасом
-        response2 = client.post("/shorten", json={
-            "original_url": "https://example2.com",
-            "custom_alias": custom_alias
-        })
+        response2 = client.post(
+            "/shorten",
+            json={"original_url": "https://example2.com", "custom_alias": custom_alias},
+        )
         assert response2.status_code == 400
 
-    def test_health_check_with_redis(self, client):
+    def test_health_check_with_redis(self, client: pytest.Fixture) -> None:
         """Тест health check с проверкой Redis"""
         response = client.get("/health")
         assert response.status_code == 200

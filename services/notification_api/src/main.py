@@ -1,16 +1,16 @@
 from contextlib import asynccontextmanager
+from typing import AsyncGenerator
 
 import structlog
-from fastapi import FastAPI
-
 from api.v1 import router as v1_router
-from core.logging_settings import setup_logging, LoggingMiddleware
+from core.logging_settings import LoggingMiddleware, setup_logging
+from fastapi import FastAPI
 
 logger = structlog.get_logger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator:
     setup_logging()
     logger.info("Приложение запускается...")
     yield

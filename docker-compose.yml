@@ -59,7 +59,7 @@ services:
 
   link-shortener:
     build:
-      context: ./services/link-shortener
+      context: services/link_shortener
       dockerfile: Dockerfile
     container_name: notification-link-shortener
     ports:
@@ -86,7 +86,7 @@ services:
 
   notification-api:
     build:
-      context: ./services/notification-api
+      context: services/notification_api
       dockerfile: Dockerfile
     container_name: notification-api
     ports:

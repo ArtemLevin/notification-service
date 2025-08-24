@@ -23,6 +23,3 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-
-if __name__ == "__main__":
-    print(settings.model_dump(exclude={"jwt_secret_key", "jwt_refresh_secret_key"}))

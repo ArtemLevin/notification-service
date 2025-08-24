@@ -1,10 +1,14 @@
-from pydantic import BaseModel
 from datetime import datetime
+from typing import Union
+
+from pydantic import BaseModel
+
 
 class BaseResponse(BaseModel):
     success: bool = True
-    message: str | None = None
+    message: Union[str, None] = None
+
 
 class TimestampModel(BaseModel):
-    created_at: datetime = None
-    updated_at: datetime | None = None
+    created_at: Union[datetime, None] = None
+    updated_at: Union[datetime, None] = None

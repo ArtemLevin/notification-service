@@ -1,1 +1,2 @@
-def test_ci(): assert 1 + 2 == 3
+def test_ci():
+    assert 1 + 2 == 3

@@ -1,17 +1,18 @@
 import logging
 import time
+from typing import Callable
 
 import structlog
-from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi import Request, Response
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from .settings import settings
 
 
-def setup_logging():
+def setup_logging() -> None:
     root_logger = logging.getLogger()
-    for handler in root_logger.handlers[:]:
-        root_logger.removeHandler(handler)
+    for root_handler in root_logger.handlers[:]:
+        root_logger.removeHandler(root_handler)
 
     handler = logging.StreamHandler()
     root_logger.addHandler(handler)
@@ -27,7 +28,11 @@ def setup_logging():
 
     if settings.log_json_format:
         processors = shared_processors + [
-            structlog.processors.JSONRenderer(ensure_ascii=False, indent=None, sort_keys=False)
+            structlog.processors.JSONRenderer(
+                ensure_ascii=False,
+                indent=None,
+                sort_keys=False,
+            ),
         ]
     else:
         processors = shared_processors + [structlog.dev.ConsoleRenderer()]
@@ -50,7 +55,7 @@ def setup_logging():
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
         start_time = time.time()
         logger = structlog.get_logger("http")
 
@@ -71,7 +76,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 
             return response
 
-        except Exception as e:
+        except Exception as error:
             process_time = time.time() - start_time
 
             logger.error(
@@ -81,7 +86,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                 query=str(request.url.query),
                 client_ip=request.client.host if request.client else None,
                 user_agent=request.headers.get("user-agent"),
-                error=str(e),
+                error=str(error),
                 process_time=round(process_time, 3),
             )
             raise
