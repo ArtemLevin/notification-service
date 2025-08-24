@@ -1,8 +1,10 @@
-from shared.enums.delivery import NotificationType, DeliveryStatus
-from pydantic import BaseModel, Field
-from typing import  List, Dict, Any
-from uuid import UUID
 from datetime import datetime
+from typing import Any, Dict, List, Union
+from uuid import UUID
+
+from pydantic import BaseModel, Field
+
+from shared.enums.delivery import DeliveryStatus, NotificationType
 
 
 class NotificationTemplate(BaseModel):
@@ -13,19 +15,22 @@ class NotificationTemplate(BaseModel):
     notification_type: NotificationType
     variables: List[str] = Field(default_factory=list)
 
+
 class NotificationCreate(BaseModel):
     template_id: UUID
     recipients: List[str]
     notification_type: NotificationType
-    scheduled_time: datetime | None = None
+    scheduled_time: Union[datetime, None] = None
     is_recurring: bool = False
-    recurrence_pattern: str | None = None
+    recurrence_pattern: Union[str, None] = None
     data: Dict[str, Any] = Field(default_factory=dict)
+
 
 class NotificationEvent(BaseModel):
     event_type: str
-    user_id: str | None = None
+    user_id: Union[str, None] = None
     data: Dict[str, Any] = Field(default_factory=dict)
+
 
 class NotificationMessage(BaseModel):
     user_id: str
@@ -35,6 +40,7 @@ class NotificationMessage(BaseModel):
     notification_type: NotificationType
     data: Dict[str, Any] = Field(default_factory=dict)
 
+
 class Notification(BaseModel):
     id: UUID
     user_id: str
@@ -43,7 +49,7 @@ class Notification(BaseModel):
     body: str
     notification_type: NotificationType
     status: DeliveryStatus
-    sent_at: datetime | None = None
-    delivered_at: datetime | None = None
-    error_message: str | None = None
+    sent_at: Union[datetime, None] = None
+    delivered_at: Union[datetime, None] = None
+    error_message: Union[str, None] = None
     data: Dict[str, Any] = Field(default_factory=dict)

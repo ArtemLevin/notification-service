@@ -8,7 +8,7 @@ pip install -r requirements-test.txt
 ```
 
 # Все тесты
-``` bash 
+``` bash
 
 
 make test
