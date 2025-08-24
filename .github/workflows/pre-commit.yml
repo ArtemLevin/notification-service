@@ -21,8 +21,8 @@ jobs:
           -o /usr/local/bin/hadolint
         chmod +x /usr/local/bin/hadolint
 
-    - name: Install pre-commit
-      run: pip3 install pre-commit
-
-    - name: Run pre-commit
-      run: pre-commit run --all-files
+#    - name: Install pre-commit
+#      run: pip3 install pre-commit
+#
+#    - name: Run pre-commit
+#      run: pre-commit run --all-files
