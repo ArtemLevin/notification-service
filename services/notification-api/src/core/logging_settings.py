@@ -3,9 +3,10 @@ import time
 
 import structlog
 from starlette.middleware.base import BaseHTTPMiddleware
+from fastapi import Request, Response
 
 from .settings import settings
-from fastapi import Request, Response
+
 
 def setup_logging():
     root_logger = logging.getLogger()
@@ -20,19 +21,14 @@ def setup_logging():
         structlog.contextvars.merge_contextvars,
         structlog.stdlib.add_logger_name,
         structlog.stdlib.add_log_level,
-        structlog.processors.TimeStamper(fmt="iso"),
-        structlog.processors.StackInfoRenderer(),
+        structlog.processors.TimeStamper(fmt="iso", key="timestamp"),
         structlog.processors.format_exc_info,
-        structlog.processors.CallsiteParameterAdder([
-            structlog.processors.CallsiteParameter.FILENAME,
-            structlog.processors.CallsiteParameter.LINENO,
-            structlog.processors.CallsiteParameter.FUNC_NAME,
-        ]),
     ]
 
     if settings.log_json_format:
         processors = shared_processors + [
-            structlog.processors.JSONRenderer(ensure_ascii=False)]
+            structlog.processors.JSONRenderer(ensure_ascii=False, indent=None, sort_keys=False)
+        ]
     else:
         processors = shared_processors + [structlog.dev.ConsoleRenderer()]
 
@@ -47,9 +43,6 @@ def setup_logging():
     logging.getLogger("uvicorn.access").handlers = []
     logging.getLogger("uvicorn").propagate = True
 
-    logging.getLogger("uvicorn").handlers = []
-    logging.getLogger("uvicorn.access").handlers = []
-
     logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
     logging.getLogger("aioredis").setLevel(logging.WARNING)
     logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -58,21 +51,22 @@ def setup_logging():
 
 class LoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        # Логируем входящий запрос
         start_time = time.time()
-        logger = structlog.get_logger(__name__)
+        logger = structlog.get_logger("http")
 
         try:
             response = await call_next(request)
             process_time = time.time() - start_time
 
-            # Логируем успешный ответ
             logger.info(
                 "Successful request",
                 method=request.method,
-                url=str(request.url),
+                path=request.url.path,
+                query=str(request.url.query),
+                client_ip=request.client.host if request.client else None,
+                user_agent=request.headers.get("user-agent"),
                 status_code=response.status_code,
-                process_time=f"{process_time:.3f}s"
+                process_time=round(process_time, 3),
             )
 
             return response
@@ -80,12 +74,14 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         except Exception as e:
             process_time = time.time() - start_time
 
-            # Логируем ошибку
             logger.error(
                 "Request failed",
                 method=request.method,
-                url=str(request.url),
+                path=request.url.path,
+                query=str(request.url.query),
+                client_ip=request.client.host if request.client else None,
+                user_agent=request.headers.get("user-agent"),
                 error=str(e),
-                process_time=f"{process_time:.3f}s"
+                process_time=round(process_time, 3),
             )
             raise
