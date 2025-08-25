@@ -87,16 +87,12 @@ services:
   notification-api:
     build:
       context: services/notification_api
-      dockerfile: Dockerfile
     container_name: notification-api
     ports:
       - "8002:8000"
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-    depends_on:
-      redis:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
