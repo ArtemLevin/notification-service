@@ -3,9 +3,8 @@ from typing import List
 from uuid import UUID  # noqa: WPS458
 
 from fastapi import APIRouter, status
-
-from shared.models.base import BaseResponse
-from shared.models.notification import (
+from models.base import BaseResponse
+from models.notification import (
     NotificationCreate,
     NotificationEvent,
     NotificationTemplate,
@@ -87,8 +86,3 @@ async def get_templates() -> List[NotificationTemplate]:
 )
 async def create_template(template: NotificationTemplate) -> BaseResponse:
     return BaseResponse(success=True, message="Successfully sent")
-
-
-@router.get("/health", description="Health Check", response_model=BaseResponse)
-async def health_check() -> BaseResponse:
-    return BaseResponse(success=True, message="Ok")
