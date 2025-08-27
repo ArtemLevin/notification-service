@@ -3,6 +3,7 @@ from typing import AsyncGenerator
 
 import structlog
 from api.v1 import router as v1_router
+from core.db import dispose_db, init_db
 from core.logging_settings import LoggingMiddleware, setup_logging
 from fastapi import FastAPI
 from models.base import BaseResponse
@@ -14,7 +15,11 @@ logger = structlog.get_logger(__name__)
 async def lifespan(app: FastAPI) -> AsyncGenerator:
     setup_logging()
     logger.info("Приложение запускается...")
+    await init_db()
+    logger.info("Соединение с базой данных открыто")
     yield
+    await dispose_db()
+    logger.info("Соединение с базой данных закрыто")
     logger.info("Приложение завершает работу...")
 
 

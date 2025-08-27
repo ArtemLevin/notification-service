@@ -7,7 +7,7 @@ from models.base import BaseResponse
 from models.notification import (
     NotificationCreate,
     NotificationEvent,
-    NotificationTemplate,
+    NotificationTemplateBase,
 )
 
 router = APIRouter(prefix="/api/v1", tags=["Notification API V1"])
@@ -56,12 +56,12 @@ async def send_notification_to_user(user_id: UUID) -> BaseResponse:
 
 @router.get(
     "/templates",
-    response_model=List[NotificationTemplate],
+    response_model=List[NotificationTemplateBase],
     description="Получение списка шаблонов",
 )
-async def get_templates() -> List[NotificationTemplate]:
+async def get_templates() -> List[NotificationTemplateBase]:
     return [
-        NotificationTemplate(
+        NotificationTemplateBase(
             id=uuid.uuid4(),
             name="Test template",
             subject="subject",
@@ -84,5 +84,5 @@ async def get_templates() -> List[NotificationTemplate]:
     status_code=201,
     response_model=BaseResponse,
 )
-async def create_template(template: NotificationTemplate) -> BaseResponse:
+async def create_template(template: NotificationTemplateBase) -> BaseResponse:
     return BaseResponse(success=True, message="Successfully sent")

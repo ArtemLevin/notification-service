@@ -4,6 +4,10 @@ uvicorn[standard]==0.24.0
 pydantic==2.5.0
 pydantic-settings==2.1.0
 
+# Databases
+sqlmodel==0.0.24
+asyncpg==0.30.0
+
 # Development and CI
 wemake-python-styleguide==0.18.0
 mypy==1.7.1
