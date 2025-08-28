@@ -16,6 +16,14 @@ class NotificationTemplateBase(SQLModel):
     variables: List[str] = Field(default_factory=list)
 
 
+class NotificationTemplateCreate(BaseModel):
+    name: str
+    subject: str
+    body: str
+    notification_type: NotificationType
+    variables: List[str] = Field(default_factory=list)
+
+
 class NotificationCreate(BaseModel):
     template_id: UUID
     recipients: List[str]
