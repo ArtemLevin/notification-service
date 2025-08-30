@@ -4,10 +4,19 @@ from uuid import UUID
 
 from models.delivery import DeliveryStatus, NotificationType
 from pydantic import BaseModel, Field
+from sqlmodel import SQLModel
 
 
-class NotificationTemplate(BaseModel):
+class NotificationTemplateBase(SQLModel):
     id: UUID
+    name: str
+    subject: str
+    body: str
+    notification_type: NotificationType
+    variables: List[str] = Field(default_factory=list)
+
+
+class NotificationTemplateCreate(BaseModel):
     name: str
     subject: str
     body: str
@@ -40,7 +49,7 @@ class NotificationMessage(BaseModel):
     data: Dict[str, Any] = Field(default_factory=dict)
 
 
-class Notification(BaseModel):
+class NotificationBase(SQLModel):
     id: UUID
     user_id: str
     template_id: UUID

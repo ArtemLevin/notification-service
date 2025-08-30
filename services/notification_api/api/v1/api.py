@@ -1,13 +1,13 @@
-import uuid
 from typing import List
-from uuid import UUID  # noqa: WPS458
+from uuid import UUID
 
-from fastapi import APIRouter, status
+from core.service import NotificationService, get_notification_service
+from fastapi import APIRouter, Depends, status
 from models.base import BaseResponse
 from models.notification import (
     NotificationCreate,
     NotificationEvent,
-    NotificationTemplate,
+    NotificationTemplateBase,
 )
 
 router = APIRouter(prefix="/api/v1", tags=["Notification API V1"])
@@ -25,8 +25,12 @@ router = APIRouter(prefix="/api/v1", tags=["Notification API V1"])
     status_code=201,
     response_model=BaseResponse,
 )
-async def send_notification(notification: NotificationCreate) -> BaseResponse:
-    return BaseResponse(success=True, message="Successfully sent")
+async def send_notification(
+    notification: NotificationCreate,
+    service: NotificationService = Depends(get_notification_service),
+) -> BaseResponse:
+    created = await service.send_notification(notification)
+    return BaseResponse(success=True, message="Successfully sent", data=created)
 
 
 @router.post(
@@ -45,31 +49,133 @@ async def send_event(event: NotificationEvent) -> BaseResponse:
     return BaseResponse(success=True, message="Successfully sent")
 
 
+# CRUD: Получить уведомление по id
 @router.get(
-    "/notifications/user/{user_id}",
-    description="Получение уведомлений пользователя",
+    "/notifications/{notification_id}",
     response_model=BaseResponse,
+    description="Получить уведомление по id",
 )
-async def send_notification_to_user(user_id: UUID) -> BaseResponse:
-    return BaseResponse(success=True, message=f"Successfully sent to {user_id}")
+async def get_notification(
+    notification_id: UUID,
+    service: NotificationService = Depends(get_notification_service),
+) -> BaseResponse:
+    try:
+        notification = await service.get_notification(notification_id)
+        return BaseResponse(success=True, data=notification)
+    except Exception as error:
+        return BaseResponse(success=False, message=str(error))
+
+
+# CRUD: Получить все уведомления
+@router.get(
+    "/notifications",
+    response_model=BaseResponse,
+    description="Получить все уведомления",
+)
+async def list_notifications(
+    service: NotificationService = Depends(get_notification_service),
+) -> BaseResponse:
+    notifications = await service.list_notifications()
+    return BaseResponse(success=True, data=notifications)
+
+
+# CRUD: Обновить уведомление
+@router.patch(
+    "/notifications/{notification_id}",
+    response_model=BaseResponse,
+    description="Обновить уведомление по id",
+)
+async def update_notification(
+    notification_id: UUID,
+    update_data: dict,
+    service: NotificationService = Depends(get_notification_service),
+) -> BaseResponse:
+    try:
+        notification = await service.update_notification(notification_id, update_data)
+        return BaseResponse(success=True, data=notification)
+    except Exception as error:
+        return BaseResponse(success=False, message=str(error))
+
+
+# CRUD: Удалить уведомление
+@router.delete(
+    "/notifications/{notification_id}",
+    response_model=BaseResponse,
+    description="Удалить уведомление по id",
+)
+async def delete_notification(
+    notification_id: UUID,
+    service: NotificationService = Depends(get_notification_service),
+) -> BaseResponse:
+    try:
+        await service.delete_notification(notification_id)
+        return BaseResponse(success=True, message="Уведомление удалено")
+    except Exception as error:
+        return BaseResponse(success=False, message=str(error))
+
+
+# CRUD: Получить шаблон по id
+@router.get(
+    "/templates/{template_id}",
+    response_model=BaseResponse,
+    description="Получить шаблон по id",
+)
+async def get_template(
+    template_id: UUID,
+    service: NotificationService = Depends(get_notification_service),
+) -> BaseResponse:
+    try:
+        template = await service.get_template(template_id)
+        return BaseResponse(success=True, data=template)
+    except Exception as error:
+        return BaseResponse(success=False, message=str(error))
+
+
+# CRUD: Обновить шаблон
+@router.patch(
+    "/templates/{template_id}",
+    response_model=BaseResponse,
+    description="Обновить шаблон по id",
+)
+async def update_template(
+    template_id: UUID,
+    update_data: dict,
+    service: NotificationService = Depends(get_notification_service),
+) -> BaseResponse:
+    try:
+        template = await service.update_template(template_id, update_data)
+        return BaseResponse(success=True, data=template)
+    except Exception as error:
+        return BaseResponse(success=False, message=str(error))
+
+
+# CRUD: Удалить шаблон
+@router.delete(
+    "/templates/{template_id}",
+    response_model=BaseResponse,
+    description="Удалить шаблон по id",
+)
+async def delete_template(
+    template_id: UUID,
+    service: NotificationService = Depends(get_notification_service),
+) -> BaseResponse:
+    try:
+        await service.delete_template(template_id)
+        return BaseResponse(success=True, message="Шаблон удалён")
+    except Exception as error:
+        return BaseResponse(success=False, message=str(error))
 
 
 @router.get(
     "/templates",
-    response_model=List[NotificationTemplate],
+    response_model=List[NotificationTemplateBase],
     description="Получение списка шаблонов",
 )
-async def get_templates() -> List[NotificationTemplate]:
-    return [
-        NotificationTemplate(
-            id=uuid.uuid4(),
-            name="Test template",
-            subject="subject",
-            body="hello, dear {{ NAME }}",
-            notification_type="email",
-            variables=["name"],
-        ),
-    ]
+async def get_templates(
+    service: NotificationService = Depends(get_notification_service),
+) -> List[NotificationTemplateBase]:
+    templates = await service.get_templates()
+    return [NotificationTemplateBase.model_validate(template) for template in templates]
 
 
 @router.post(
@@ -84,5 +190,9 @@ async def get_templates() -> List[NotificationTemplate]:
     status_code=201,
     response_model=BaseResponse,
 )
-async def create_template(template: NotificationTemplate) -> BaseResponse:
-    return BaseResponse(success=True, message="Successfully sent")
+async def create_template(
+    template: NotificationTemplateBase,
+    service: NotificationService = Depends(get_notification_service),
+) -> BaseResponse:
+    created = await service.create_template(template)
+    return BaseResponse(success=True, message="Successfully sent", data=created)

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Union
+from typing import Any, Union
 
 from pydantic import BaseModel
 
@@ -7,6 +7,7 @@ from pydantic import BaseModel
 class BaseResponse(BaseModel):
     success: bool = True
     message: Union[str, None] = None
+    data: Any = None
 
 
 class TimestampModel(BaseModel):
