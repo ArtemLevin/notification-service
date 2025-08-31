@@ -1,323 +1,175 @@
+name: notifications-stack
+
+networks:
+  notification-network:
+    driver: bridge
+
+volumes:
+  pg_data:
+  rabbitmq_data:
+
 services:
+
   postgres:
     image: postgres:15-alpine
-    container_name: notification-postgres
-    env_file:
-      - .env
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-notifications}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
       - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    restart: unless-stopped
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     networks:
       - notification-network
+    volumes:
+      - pg_data:/var/lib/postgresql/data
 
   redis:
     image: redis:7-alpine
-    container_name: notification-redis
+    container_name: redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
     ports:
       - "6379:6379"
-    volumes:
-      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    restart: unless-stopped
+      interval: 10s
+      timeout: 5s
+      retries: 10
     networks:
       - notification-network
 
   rabbitmq:
-    image: rabbitmq:3-management-alpine
-    container_name: notification-rabbitmq
+    image: rabbitmq:3.13-management-alpine
+    container_name: rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
     ports:
       - "5672:5672"
-      - "15672:15672"
-    environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+      - "15672:15672" # management UI
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+    networks:
+      - notification-network
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
-    healthcheck:
-      test: ["CMD", "rabbitmqctl", "status"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+
+
+  admin:
+
+    build:
+      context: .
+      dockerfile: services/admin/Dockerfile
+    container_name: admin-panel
     restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8001:8000"
+    networks:
+      - notification-network
+
+  notification_api:
+    build:
+      context: .
+      dockerfile: services/notification_api/Dockerfile
+    container_name: notification-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
+      LINK_SHORTENER_BASE_URL: ${LINK_SHORTENER_BASE_URL:-http://link-shortener:8000}
+      WEBSOCKET_SECRET: ${WEBSOCKET_SECRET:-dev-secret}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "8002:8000"
     networks:
       - notification-network
 
   link-shortener:
     build:
-      context: services/link_shortener
-      dockerfile: Dockerfile
-    container_name: notification-link-shortener
-    ports:
-      - "${LINK_SHORTENER_PORT:-8001}:8000"
-    environment:
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
-    depends_on:
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      context: .
+      dockerfile: services/link_shortener/Dockerfile
+    container_name: link-shortener
     restart: unless-stopped
-    networks:
-      - notification-network
-    volumes:
-      - ./logs/link-shortener:/app/logs
-
-  admin_panel:
-    build:
-      context: ./admin_panel
-      dockerfile: Dockerfile
-    container_name: admin_panel
-    ports:
-      - "8003:8000"
+    env_file:
+      - .env
     depends_on:
       postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    restart: unless-stopped
-    networks:
-      - notification-network
-    volumes:
-      - ./logs/admin_panel:/app/logs
-
-  notification-api:
-    build:
-      context: services/notification_api
-    container_name: notification-api
-    ports:
-      - "8002:8000"
-    environment:
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    restart: unless-stopped
-    networks:
-      - notification-network
-    volumes:
-      - ./logs/notification-api:/app/logs
-
-
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
-    container_name: notification-elasticsearch
-    environment:
-      - discovery.type=single-node
-      - ES_JAVA_OPTS=-Xms1g -Xmx1g
-      - xpack.security.enabled=false
-    ports:
-      - "9200:9200"
-      - "9300:9300"
-    volumes:
-      - elasticsearch_data:/usr/share/elasticsearch/data
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 90s
-    restart: unless-stopped
-    networks:
-      - notification-network
-
-  logstash:
-    image: docker.elastic.co/logstash/logstash:8.11.0
-    container_name: notification-logstash
-    depends_on:
-      elasticsearch:
-        condition: service_healthy
-    ports:
-      - "5044:5044"
-      - "9600:9600"
-    volumes:
-      - ./elk/logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml
-      - ./elk/logstash/pipeline:/usr/share/logstash/pipeline
-      - ./logs:/var/log/notification
-    environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-    restart: unless-stopped
-    networks:
-      - notification-network
-
-  kibana:
-    image: docker.elastic.co/kibana/kibana:8.11.0
-    container_name: notification-kibana
-    depends_on:
-      elasticsearch:
-        condition: service_healthy
-    ports:
-      - "5601:5601"
-    volumes:
-      - ./elk/kibana/config/kibana.yml:/usr/share/kibana/config/kibana.yml
-    environment:
-      - ELASTICSEARCH_HOSTS=["http://elasticsearch:9200"]
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-    restart: unless-stopped
-    networks:
-      - notification-network
-
-  filebeat:
-    image: docker.elastic.co/beats/filebeat:8.11.0
-    container_name: notification-filebeat
-    user: root
-    depends_on:
-      logstash:
         condition: service_started
-    volumes:
-      - ./elk/filebeat/config/filebeat.yml:/usr/share/filebeat/filebeat.yml
-      - ./logs:/var/log/notification:ro
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    restart: unless-stopped
+    ports:
+      - "8000:8000"
     networks:
       - notification-network
 
-#  sentry-postgres:
-#    image: postgres:15-alpine
-#    container_name: sentry-postgres
-#    environment:
-#      POSTGRES_USER: ${SENTRY_POSTGRES_USER:-sentry}
-#      POSTGRES_PASSWORD: ${SENTRY_POSTGRES_PASSWORD}
-#      POSTGRES_DB: ${SENTRY_POSTGRES_DB:-sentry}
-#    volumes:
-#      - sentry_postgres_data:/var/lib/postgresql/data
-#    healthcheck:
-#      test: ["CMD-SHELL", "pg_isready -U ${SENTRY_POSTGRES_USER:-sentry}"]
-#      interval: 30s
-#      timeout: 10s
-#      retries: 3
-#    restart: unless-stopped
-#    networks:
-#      - notification-network
-#
-#  sentry-redis:
-#    image: redis:7-alpine
-#    container_name: sentry-redis
-#    volumes:
-#      - sentry_redis_data:/data
-#    healthcheck:
-#      test: ["CMD", "redis-cli", "ping"]
-#      interval: 30s
-#      timeout: 10s
-#      retries: 3
-#    restart: unless-stopped
-#    networks:
-#      - notification-network
-#
-#  sentry:
-#    image: sentry:latest
-#    container_name: sentry-server
-#    depends_on:
-#      sentry-postgres:
-#        condition: service_healthy
-#      sentry-redis:
-#        condition: service_healthy
-#    environment:
-#      SENTRY_SECRET_KEY: ${SENTRY_SECRET_KEY}
-#      SENTRY_POSTGRES_HOST: ${SENTRY_POSTGRES_HOST}
-#      SENTRY_REDIS_HOST: ${SENTRY_REDIS_HOST}
-#      SENTRY_DB_USER: ${SENTRY_POSTGRES_USER:-sentry}
-#      SENTRY_DB_PASSWORD: ${SENTRY_POSTGRES_PASSWORD}
-#      SENTRY_DB_NAME: ${SENTRY_POSTGRES_DB:-sentry}
-#    volumes:
-#      - ./sentry/config/sentry.conf.py:/etc/sentry/sentry.conf.py
-#    ports:
-#      - "9000:9000"
-#    restart: unless-stopped
-#    networks:
-#      - notification-network
-#
-#  sentry-worker:
-#    image: sentry:latest
-#    container_name: sentry-worker
-#    depends_on:
-#      sentry:
-#        condition: service_started
-#    environment:
-#      SENTRY_SECRET_KEY: ${SENTRY_SECRET_KEY}
-#      SENTRY_POSTGRES_HOST: ${SENTRY_POSTGRES_HOST}
-#      SENTRY_REDIS_HOST: ${SENTRY_REDIS_HOST}
-#      SENTRY_DB_USER: ${SENTRY_POSTGRES_USER:-sentry}
-#      SENTRY_DB_PASSWORD: ${SENTRY_POSTGRES_PASSWORD}
-#      SENTRY_DB_NAME: ${SENTRY_POSTGRES_DB:-sentry}
-#    command: sentry run worker
-#    volumes:
-#      - ./sentry/config/sentry.conf.py:/etc/sentry/sentry.conf.py
-#    restart: unless-stopped
-#    networks:
-#      - notification-network
-#
-#  sentry-cron:
-#    image: sentry:latest
-#    container_name: sentry-cron
-#    depends_on:
-#      sentry:
-#        condition: service_started
-#    environment:
-#      SENTRY_SECRET_KEY: ${SENTRY_SECRET_KEY}
-#      SENTRY_POSTGRES_HOST: ${SENTRY_POSTGRES_HOST}
-#      SENTRY_REDIS_HOST: ${SENTRY_REDIS_HOST}
-#      SENTRY_DB_USER: ${SENTRY_POSTGRES_USER:-sentry}
-#      SENTRY_DB_PASSWORD: ${SENTRY_POSTGRES_PASSWORD}
-#      SENTRY_DB_NAME: ${SENTRY_POSTGRES_DB:-sentry}
-#    command: sentry run cron
-#    volumes:
-#      - ./sentry/config/sentry.conf.py:/etc/sentry/sentry.conf.py
-#    restart: unless-stopped
-#    networks:
-#      - notification-network
+  # --- Workers & Realtime ---
 
-volumes:
-  postgres_data:
-    name: notification-postgres-data
-  redis_data:
-    name: notification-redis-data
-  rabbitmq_data:
-    name: notification-rabbitmq-data
-  elasticsearch_data:
-    name: notification-elasticsearch-data
-  sentry_postgres_data:
-    name: notification-sentry-postgres-data
-  sentry_redis_data:
-    name: notification-sentry-redis-data
+  worker:
+    build:
+      context: .
+      dockerfile: services/worker/Dockerfile
+    container_name: notification-worker
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - notification-network
 
-networks:
-  notification-network:
-    name: ${DOCKER_NETWORK:-notification-system-network}
-    driver: bridge
+  websocket-server:
+    build:
+      context: .
+      dockerfile: services/websocket_server/Dockerfile
+    container_name: notification-websocket
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      WEBSOCKET_SECRET: ${WEBSOCKET_SECRET:-dev-secret}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "8004:8000"
+    networks:
+      - notification-network
