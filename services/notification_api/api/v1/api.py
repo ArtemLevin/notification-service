@@ -1,8 +1,9 @@
 from typing import List
 from uuid import UUID
 
-from core.service import NotificationService, get_notification_service
 from fastapi import APIRouter, Depends, status
+
+from core.service import NotificationService, get_notification_service
 from models.base import BaseResponse
 from models.notification import (
     NotificationCreate,
@@ -13,18 +14,9 @@ from models.notification import (
 router = APIRouter(prefix="/api/v1", tags=["Notification API V1"])
 
 
-@router.post(
-    "/notifications/send",
-    description="Отправка рассылок",
-    responses={
-        status.HTTP_201_CREATED: {
-            "message": "Successfully sent",
-            "model": BaseResponse,
-        },
-    },
-    status_code=201,
-    response_model=BaseResponse,
-)
+@router.post("/notifications/send", status_code=201, response_model=BaseResponse,
+             description="Отправка рассылок",
+             responses={status.HTTP_201_CREATED: {"message": "Successfully sent", "model": BaseResponse}})
 async def send_notification(
     notification: NotificationCreate,
     service: NotificationService = Depends(get_notification_service),
@@ -33,20 +25,26 @@ async def send_notification(
     return BaseResponse(success=True, message="Successfully sent", data=created)
 
 
-@router.post(
-    "/notifications/events",
-    description="Прием событий",
-    responses={
-        status.HTTP_201_CREATED: {
-            "message": "Successfully sent",
-            "model": BaseResponse,
-        },
-    },
-    status_code=201,
-    response_model=BaseResponse,
-)
-async def send_event(event: NotificationEvent) -> BaseResponse:
-    return BaseResponse(success=True, message="Successfully sent")
+@router.post("/notifications/events", status_code=201, response_model=BaseResponse,
+             description="Прием событий",
+             responses={status.HTTP_201_CREATED: {"message": "Successfully sent", "model": BaseResponse}})
+async def send_event(
+    event: NotificationEvent,
+    service: NotificationService = Depends(get_notification_service),
+) -> BaseResponse:
+    result = await service.process_event(event)
+    return BaseResponse(success=True, message="Successfully sent", data=result)
+
+
+# --- выдача пользователю его уведомлений ---
+@router.get("/users/{user_id}/notifications", response_model=BaseResponse,
+            description="Получить уведомления пользователя")
+async def user_notifications(
+    user_id: str,
+    service: NotificationService = Depends(get_notification_service),
+) -> BaseResponse:
+    items = await service.get_user_notifications(user_id)
+    return BaseResponse(success=True, data=items)
 
 
 # CRUD: Получить уведомление по id
