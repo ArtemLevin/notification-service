@@ -8,7 +8,7 @@ done
 echo "Postgres is available!"
 
 echo "Running migrations..."
-alembic -c /app/admin_panel/alembic.ini upgrade head
+alembic -c /app/alembic.ini upgrade head
 
 echo "Starting server..."
 exec uvicorn admin_panel.main:app --host 0.0.0.0 --port 8000
