@@ -70,7 +70,7 @@ services:
 
     build:
       context: .
-      dockerfile: services/admin/Dockerfile
+      dockerfile: services/admin_panel/Dockerfile
     container_name: admin-panel
     restart: unless-stopped
     env_file:
@@ -127,7 +127,7 @@ services:
       postgres:
         condition: service_started
     ports:
-      - "8000:8000"
+      - "8001:8000"
     networks:
       - notification-network
 
@@ -157,15 +157,15 @@ services:
   websocket-server:
     build:
       context: .
-      dockerfile: services/websocket_server/Dockerfile
+      dockerfile: services/websocket-server/Dockerfile
     container_name: notification-websocket
     restart: unless-stopped
     env_file:
       - .env
     environment:
       WEBSOCKET_SECRET: ${WEBSOCKET_SECRET:-dev-secret}
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
     depends_on:
       rabbitmq:
         condition: service_healthy

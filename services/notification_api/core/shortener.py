@@ -6,7 +6,7 @@ from core.settings import settings
 
 
 async def shorten(url: str) -> str:
-    """Вернёт короткую ссылку из сервиса шортенера (best effort)."""
+    """Вернёт короткую ссылку из сервиса шортенера."""
     try:
         async with httpx.AsyncClient(timeout=3.0) as client:
             resp = await client.post(
