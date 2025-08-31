@@ -57,6 +57,12 @@ class Notification(NotificationBase, table=True):  # type: ignore[call-arg]
         sa_type=MutableDict.as_mutable(JSONB),
     )
 
+    scheduled_time: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime(timezone=True))
+    )
+    is_recurring: bool = Field(default=False)
+    recurrence_pattern: Optional[str] = Field(default=None)
+
 
 # Создаем асинхронный движок
 engine: AsyncEngine = create_async_engine(
