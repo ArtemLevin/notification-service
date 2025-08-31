@@ -1,9 +1,10 @@
 from typing import List, Optional
 from uuid import UUID
 
-from core.db import Notification, NotificationTemplate
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
+
+from core.db import Notification, NotificationTemplate
 
 
 class NotificationRepository:
@@ -22,25 +23,17 @@ class NotificationRepository:
         )
         return result.scalar_one_or_none()
 
+    async def list(self) -> List[Notification]:
+        result = await self.session.execute(select(Notification))
+        return result.scalars().all()
+
     async def get_by_user(self, user_id: str) -> List[Notification]:
         result = await self.session.execute(
             select(Notification).where(Notification.user_id == user_id)
         )
-        return result.scalars().all()  # type: ignore[no-any-return]
+        return result.scalars().all()
 
-    async def list(self) -> List[Notification]:
-        result = await self.session.execute(select(Notification))
-        return result.scalars().all()  # type: ignore[no-any-return]
-
-    async def delete(self, notification_id: UUID) -> None:
-        notification = await self.get_by_id(notification_id)
-        if notification:
-            await self.session.delete(notification)
-            await self.session.commit()
-
-    async def update(
-        self, notification_id: UUID, update_data: dict
-    ) -> Optional[Notification]:
+    async def update(self, notification_id: UUID, update_data: dict) -> Optional[Notification]:
         notification = await self.get_by_id(notification_id)
         if not notification:
             return None
@@ -77,17 +70,9 @@ class NotificationTemplateRepository:
 
     async def list(self) -> List[NotificationTemplate]:
         result = await self.session.execute(select(NotificationTemplate))
-        return result.scalars().all()  # type: ignore[no-any-return]
+        return result.scalars().all()
 
-    async def delete(self, template_id: UUID) -> None:
-        template = await self.get_by_id(template_id)
-        if template:
-            await self.session.delete(template)
-            await self.session.commit()
-
-    async def update(
-        self, template_id: UUID, update_data: dict
-    ) -> Optional[NotificationTemplate]:
+    async def update(self, template_id: UUID, update_data: dict) -> Optional[NotificationTemplate]:
         template = await self.get_by_id(template_id)
         if not template:
             return None
