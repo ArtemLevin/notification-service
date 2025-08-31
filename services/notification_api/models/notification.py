@@ -30,7 +30,7 @@ class NotificationCreate(BaseModel):
     notification_type: NotificationType
     scheduled_time: Union[datetime, None] = None
     is_recurring: bool = False
-    recurrence_pattern: Union[str, None] = None
+    recurrence_pattern: Union[str, None] = None  # "weekly:FRI", "yearly:01-01"
     data: Dict[str, Any] = Field(default_factory=dict)
 
 
@@ -61,3 +61,6 @@ class NotificationBase(SQLModel):
     delivered_at: Union[datetime, None] = None
     error_message: Union[str, None] = None
     data: Dict[str, Any] = Field(default_factory=dict)
+    scheduled_time: Union[datetime, None] = None
+    is_recurring: bool = False
+    recurrence_pattern: Union[str, None] = None

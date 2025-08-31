@@ -30,9 +30,22 @@ class Settings(BaseSettings):
     postgres_host: str
     postgres_port: str
 
+    rabbitmq_host: str = "rabbitmq"
+    rabbitmq_port: int = 5672
+    rabbitmq_user: str = "guest"
+    rabbitmq_password: str = "guest"
+    rabbitmq_vhost: str = "/"
+
+    link_shortener_base_url: str = "http://link-shortener:8000"
+
+    websocket_secret: str = "dev-secret"
+
     @property
     def database_url(self) -> str:
-        return f"postgresql+asyncpg://{self.postgres_host}/{self.postgres_db}?user={self.postgres_user}&password={self.postgres_password}"  # noqa: E501
+        return (
+            f"postgresql+asyncpg://{self.postgres_host}/{self.postgres_db}"
+            f"?user={self.postgres_user}&password={self.postgres_password}"
+        )
 
 
 settings = Settings()
